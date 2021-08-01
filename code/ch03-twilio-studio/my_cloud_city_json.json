@@ -1,0 +1,657 @@
+{
+  "description": "A New Flow",
+  "states": [
+    {
+      "name": "Trigger",
+      "type": "trigger",
+      "transitions": [
+        {
+          "next": "InitialResponse",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "incomingCall"
+        },
+        {
+          "event": "incomingRequest"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "name": "InitialResponse",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "CheckSize",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 10,
+          "y": 170
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "Welcome to the Cloud City Cake Company! What size cake would you like?  We have Small, Medium, or Large.",
+        "timeout": "3600"
+      }
+    },
+    {
+      "name": "CheckSize",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "next": "InvalidSizeReponse",
+          "event": "noMatch"
+        },
+        {
+          "next": "GetMenu",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value matches_any_of small,medium,large",
+              "arguments": [
+                "{{widgets.InitialResponse.inbound.Body}}"
+              ],
+              "type": "matches_any_of",
+              "value": "small,medium,large"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.InitialResponse.inbound.Body}}",
+        "offset": {
+          "x": 10,
+          "y": 410
+        }
+      }
+    },
+    {
+      "name": "InvalidSizeReponse",
+      "type": "send-message",
+      "transitions": [
+        {
+          "next": "InitialResponse",
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -310,
+          "y": 410
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "Sorry, \"{{widgets.InitialResponse.inbound.Body}} \" isn't one of our sizes!"
+      }
+    },
+    {
+      "name": "GetMenu",
+      "type": "make-http-request",
+      "transitions": [
+        {
+          "next": "Menu",
+          "event": "success"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 220,
+          "y": 630
+        },
+        "method": "GET",
+        "content_type": "application/x-www-form-urlencoded;charset=utf-8",
+        "url": "https://cloudcitycakecompany.azurewebsites.net/api/flavours"
+      }
+    },
+    {
+      "name": "Menu",
+      "type": "set-variables",
+      "transitions": [
+        {
+          "next": "Confirm_Size",
+          "event": "next"
+        }
+      ],
+      "properties": {
+        "variables": [
+          {
+            "value": "{{widgets.GetMenu.parsed.flavour | join: \", \"}}",
+            "key": "flavour"
+          },
+          {
+            "value": "{{widgets.GetMenu.parsed.topping | join: \", \"}}",
+            "key": "topping"
+          },
+          {
+            "value": "{{widgets.GetMenu.parsed.frosting | join: \", \"}}",
+            "key": "frosting"
+          }
+        ],
+        "offset": {
+          "x": 230,
+          "y": 880
+        }
+      }
+    },
+    {
+      "name": "Ask_Flavour",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "Test_Flavour",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 390,
+          "y": 1300
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "What flavor would you like?  We have: \n\n{{widgets.Menu.flavour}}",
+        "timeout": "3600"
+      }
+    },
+    {
+      "name": "Test_Flavour",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "next": "Invalid_Flavour",
+          "event": "noMatch"
+        },
+        {
+          "next": "Ask_Frosting",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value matches_any_of {{widgets.Menu.flavour}}",
+              "arguments": [
+                "{{widgets.Ask_Flavour.inbound.Body}}"
+              ],
+              "type": "matches_any_of",
+              "value": "{{widgets.Menu.flavour}}"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.Ask_Flavour.inbound.Body}}",
+        "offset": {
+          "x": 770,
+          "y": 1300
+        }
+      }
+    },
+    {
+      "name": "Invalid_Flavour",
+      "type": "send-message",
+      "transitions": [
+        {
+          "next": "Ask_Flavour",
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 50,
+          "y": 1310
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "Sorry, we don't have that."
+      }
+    },
+    {
+      "name": "Ask_Frosting",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "Test_Frosting",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 450,
+          "y": 1630
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "Thank you.  A {{widgets.Ask_Flavour.inbound.Body}} cake is a good choice.\n\nWhat kind of frosting would you like?  \n\nWe have: {{widgets.Menu.frosting}}",
+        "timeout": "3600"
+      }
+    },
+    {
+      "name": "Invalid_Frosting",
+      "type": "send-message",
+      "transitions": [
+        {
+          "next": "Ask_Frosting",
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 90,
+          "y": 1950
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "Sorry, we don't have \"{{widgets.Ask_Frosting.inbound.Body}} \""
+      }
+    },
+    {
+      "name": "Test_Frosting",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "next": "Invalid_Frosting",
+          "event": "noMatch"
+        },
+        {
+          "next": "Ask_Topping",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value matches_any_of {{widgets.Menu.frosting}}",
+              "arguments": [
+                "{{widgets.Ask_Frosting.inbound.Body}}"
+              ],
+              "type": "matches_any_of",
+              "value": "{{widgets.Menu.frosting}}"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.Ask_Frosting.inbound.Body}}",
+        "offset": {
+          "x": 460,
+          "y": 1910
+        }
+      }
+    },
+    {
+      "name": "Ask_Topping",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "Test_Topping",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 690,
+          "y": 2180
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "Thank you.  \"{{widgets.Ask_Frosting.inbound.Body}}\" is a great choice.  \n\nFinally, what kind of topping would you like on your {{widgets.Ask_Flavour.inbound.Body}} cake with {{widgets.Ask_Frosting.inbound.Body}} frosting?  We have:\n\n{{widgets.Menu.topping}}",
+        "timeout": "3600"
+      }
+    },
+    {
+      "name": "Test_Topping",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "next": "Invalid_Topping",
+          "event": "noMatch"
+        },
+        {
+          "next": "Price_Cake",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value matches_any_of {{widgets.Menu.topping}}",
+              "arguments": [
+                "{{widgets.Ask_Topping.inbound.Body}}"
+              ],
+              "type": "matches_any_of",
+              "value": "{{widgets.Menu.topping}}"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.Ask_Topping.inbound.Body}}",
+        "offset": {
+          "x": 660,
+          "y": 2170
+        }
+      }
+    },
+    {
+      "name": "Invalid_Topping",
+      "type": "send-message",
+      "transitions": [
+        {
+          "next": "Ask_Topping",
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 220,
+          "y": 2410
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "Sorry, \"{{widgets.Test_Topping.inbound.body}}\" isn't one of our toppings."
+      }
+    },
+    {
+      "name": "Confirm_Size",
+      "type": "send-message",
+      "transitions": [
+        {
+          "next": "Ask_Flavour",
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 300,
+          "y": 1090
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "\"{{widgets.InitialResponse.inbound.Body}}\"  is a wonderful choice."
+      }
+    },
+    {
+      "name": "Price_Cake",
+      "type": "make-http-request",
+      "transitions": [
+        {
+          "next": "Confirm_Price",
+          "event": "success"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 710,
+          "y": 2688
+        },
+        "method": "GET",
+        "content_type": "application/x-www-form-urlencoded;charset=utf-8",
+        "parameters": [
+          {
+            "value": "{{widgets.InitialResponse.inbound.Body}}",
+            "key": "size"
+          },
+          {
+            "value": "{{widgets.Ask_Flavour.inbound.Body}}",
+            "key": "flavour"
+          },
+          {
+            "value": "{{widgets.Ask_Topping.inbound.Body}}",
+            "key": "topping"
+          },
+          {
+            "value": "{{widgets.Ask_Frosting.inbound.Body}}",
+            "key": "frosting"
+          }
+        ],
+        "url": "https://cloudcitycakecompany.azurewebsites.net/api/pricecalculator"
+      }
+    },
+    {
+      "name": "Confirm_Price",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "Interpret_Confirm_Price",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 710,
+          "y": 2920
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "Your {{widgets.InitialResponse.inbound.Body}} {{widgets.Ask_Flavour.inbound.Body}} cake with {{widgets.Ask_Frosting.inbound.Body}} frosting and {{widgets.Ask_Topping.inbound.Body}} will cost {{widgets.Price_Cake.parsed.total}} gold coins.  Would you like to order it?",
+        "timeout": "3600"
+      }
+    },
+    {
+      "name": "Interpret_Confirm_Price",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "next": "No_Cake",
+          "event": "noMatch"
+        },
+        {
+          "next": "Yes_Cake",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "If value equal_to \"Yes\"",
+              "arguments": [
+                "{{widgets.Confirm_Price.inbound.Body}}"
+              ],
+              "type": "matches_any_of",
+              "value": "Yes,y,yeah,please,okay,ok"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.Confirm_Price.inbound.Body}}",
+        "offset": {
+          "x": 720,
+          "y": 3150
+        }
+      }
+    },
+    {
+      "name": "No_Cake",
+      "type": "send-message",
+      "transitions": [
+        {
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 260,
+          "y": 3340
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "Sorry to hear that. Have a good day!"
+      }
+    },
+    {
+      "name": "Yes_Cake",
+      "type": "send-message",
+      "transitions": [
+        {
+          "next": "Get_Name",
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 693,
+          "y": 3448
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "Great! We'll need some info from you to finish processing your order."
+      }
+    },
+    {
+      "name": "Get_Name",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "Get_Email",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 700,
+          "y": 3670
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "First, what is your name?",
+        "timeout": "3600"
+      }
+    },
+    {
+      "name": "Get_Email",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "Order_Confirm",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 710,
+          "y": 3870
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "Hi, {{widgets.Get_Name.inbound.Body}}, nice to meet you!  \n\nWhat is your email address, please?",
+        "timeout": "3600"
+      }
+    },
+    {
+      "name": "Order_Confirm",
+      "type": "send-message",
+      "transitions": [
+        {
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 720,
+          "y": 4080
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "Thanks, {{widgets.Get_Name.inbound.Body}}.  We have your email as \" {{widgets.Get_Email.inbound.Body}} \".  \n\nYour order has been placed (NOT REALLY).  It will be under your email address."
+      }
+    }
+  ],
+  "initial_state": "Trigger",
+  "flags": {
+    "allow_concurrent_calls": true
+  }
+}

@@ -1,0 +1,8 @@
+# adds everything in the current directory (.) to be tracked by git
+git add .
+
+# adds a "checkpoint" (aka commit) to your local version of the code
+git commit -m "MESSAGE"
+
+# pushes your local changes to a remote repository
+git push
